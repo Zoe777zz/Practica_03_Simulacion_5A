@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Modelo M/M/1</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <div class="brand-mark">M/M/1</div>
+        <div>
+          <p class="eyebrow">SIMULACIÓN</p>
+          <h1>Modelo M/M/1</h1>
+        </div>
+      </div>
+    </header>
+
+    <main class="content-grid">
+      <section class="hero-card card compact-hero">
+        <div class="hero-copy">
+          <div class="control-row">
+            <label for="repetitions">N simulaciones</label>
+            <input id="repetitions" type="number" min="1" max="50" value="5">
+            <button id="runBtn" class="primary-btn">Ejecutar simulación</button>
+          </div>
+          <div id="seedInfo" class="seed-note">La semilla se generará automáticamente al ejecutar.</div>
+        </div>
+
+        <div class="mini-stats">
+          <div class="mini-stat"><span>Servidor</span><strong>1</strong><small>recurso</small></div>
+          <div class="mini-stat"><span>Disciplina</span><strong>FIFO</strong><small>primero en llegar</small></div>
+          <div class="mini-stat"><span>Escenarios</span><strong>3</strong><small>fijos</small></div>
+        </div>
+      </section>
+
+      <section class="card scenarios-card">
+        <div class="section-heading">
+          <div>
+            <h3>Parámetros definidos</h3>
+          </div>
+          <span class="soft-badge">Sin ingreso manual de λ y μ</span>
+        </div>
+        <div class="scenario-grid">
+          {% for s in scenarios %}
+          <article class="scenario-tile" data-key="{{ s.key }}">
+            <div class="scenario-number">{{ loop.index }}</div>
+            <div>
+              <h4>{{ s.name }}</h4>
+              <p>{{ s.condition }}</p>
+              <div class="param-row"><span>λ <b>{{ '%.1f'|format(s.arrival_rate) }}</b></span><span>μ <b>{{ '%.1f'|format(s.service_rate) }}</b></span></div>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="card animation-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow blue">SIMULACIÓN VISUAL</p>
+            <h3>Flujo de clientes</h3>
+          </div>
+          <div class="visual-controls">
+            <select id="animationScenario">
+              {% for s in scenarios %}
+              <option value="{{ s.key }}">{{ s.name }}</option>
+              {% endfor %}
+            </select>
+            <button id="toggleAnimation" class="ghost-btn">Pausar</button>
+          </div>
+        </div>
+
+        <div class="queue-scene" id="queueScene">
+          <div class="scene-topline">
+            <div class="flow-key"><span class="flow-key-number">1</span> Llega</div>
+            <div class="flow-key"><span class="flow-key-number">2</span> Espera FIFO</div>
+            <div class="flow-key"><span class="flow-key-number">3</span> Atención</div>
+            <div class="flow-key"><span class="flow-key-number">4</span> Sale</div>
+          </div>
+
+          <div class="service-flow">
+            <div class="flow-station entrance-station">
+              <span class="station-title">1 · Llegada</span>
+              <div class="entry-gate">ENTRADA</div>
+              <div id="arrivalPerson" class="arrival-person" aria-hidden="true">🧍</div>
+              <span class="station-help">Nuevo cliente</span>
+            </div>
+
+            <div class="flow-arrow" aria-hidden="true">→</div>
+
+            <div class="flow-station queue-station">
+              <div class="queue-title-row">
+                <span class="station-title">2 · Cola FIFO</span>
+                <span class="fifo-note">Primero en llegar → primero en ser atendido</span>
+              </div>
+              <div id="queueLine" class="queue-line" aria-label="Personas esperando en la cola">
+                <div class="queue-slot" data-slot="6"><span class="slot-number">6</span><span class="slot-person"></span></div>
+                <div class="queue-slot" data-slot="5"><span class="slot-number">5</span><span class="slot-person"></span></div>
+                <div class="queue-slot" data-slot="4"><span class="slot-number">4</span><span class="slot-person"></span></div>
+                <div class="queue-slot" data-slot="3"><span class="slot-number">3</span><span class="slot-person"></span></div>
+                <div class="queue-slot" data-slot="2"><span class="slot-number">2</span><span class="slot-person"></span></div>
+                <div class="queue-slot front-slot" data-slot="1"><span class="slot-number">1</span><span class="slot-person"></span></div>
+              </div>
+              <div id="overflowQueue" class="overflow-queue hidden">+0 esperando</div>
+            </div>
+
+            <div class="flow-arrow" aria-hidden="true">→</div>
+
+            <div class="flow-station service-station">
+              <span class="station-title">3 · Atención</span>
+              <div id="serviceBooth" class="service-booth">
+                <div class="server-avatar" title="Servidor">🧑‍💻</div>
+                <div class="service-divider"></div>
+                <div id="serviceCustomer" class="service-customer empty" aria-label="Cliente en atención">—</div>
+              </div>
+              <div class="service-status"><span id="serviceLight" class="service-light"></span><span id="serviceText">Servidor libre</span></div>
+            </div>
+
+            <div class="flow-arrow" aria-hidden="true">→</div>
+
+            <div class="flow-station exit-station">
+              <span class="station-title">4 · Salida</span>
+              <div class="exit-door">SALIDA</div>
+              <div id="exitPerson" class="exit-person" aria-hidden="true">🚶</div>
+              <span class="station-help">Atención finalizada</span>
+            </div>
+          </div>
+
+          <div class="scene-metrics">
+            <div><span>λ · Llegadas</span><strong id="animLambda">2.0</strong></div>
+            <div><span>μ · Servicio</span><strong id="animMu">3.0</strong></div>
+            <div><span>ρ · Utilización</span><strong id="animRho">0.667</strong></div>
+            <div><span>Personas esperando</span><strong id="animQueueCount">0</strong></div>
+          </div>
+        </div>
+        <p class="scene-caption">Animación conceptual M/M/1: las llegadas y los servicios varían manteniendo la relación entre λ y μ del escenario seleccionado.</p>
+      </section>
+
+      <section class="card results-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow blue">RESULTADOS</p>
+            <h3>Comparación teórica y simulada</h3>
+          </div>
+          <span id="resultBadge" class="soft-badge">Aún sin ejecutar</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Escenario</th><th>ρ</th><th>L</th><th>Lq</th><th>W</th><th>Wq</th><th>Espera prom. sim.</th><th>Cola prom. sim.</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody">
+              <tr><td colspan="8" class="empty-row">Ejecuta la simulación para visualizar los resultados.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card chart-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow blue">GRÁFICAS</p>
+            <h3>Comportamiento temporal</h3>
+          </div>
+          <select id="chartScenario">
+            {% for s in scenarios %}
+            <option value="{{ s.key }}">{{ s.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="chart-placeholder" id="chartPlaceholder">
+          <div class="chart-icon">⌁</div>
+          <h4>Las gráficas aparecerán aquí</h4>
+          <p>Incluyen cola, tiempo de espera y la relación entre ρ, espera y tiempo de ejecución/servicio.</p>
+        </div>
+        <img id="chartImage" class="chart-image hidden" alt="Gráficas del escenario seleccionado">
+      </section>
+    </main>
+
+    <footer>
+      <span>Universidad Nacional de Loja · Carrera de Computación</span>
+      <span>Práctica 03 · Simulación M/M/1</span>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
